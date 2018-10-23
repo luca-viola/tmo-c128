@@ -169,7 +169,7 @@ legge:  jsr legbyt   ; legge un byte.
         inc $fc      ; ti dal blocco.
 return: rts          ; return.
 ;-----------------------------------
-legbyt: lda $0000    ; inverte bit 4
+legbyt: lda $dd00    ; inverte bit 4
         eor #16      ; registro i/o
         sta $dd00    ; del cia.
         lda #8       ; attende che un
