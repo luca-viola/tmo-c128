@@ -49,7 +49,7 @@ confr3: jsr $3c9     ; testo corrente
         ldx #0       ; legge carattere
 loop1:  jsr $3c9     ; corrente.
         cmp #34      ; virgolette?
-        beq cont1    ; se si', salta.
+        beq cont1    ; se sì, salta.
         sta nome,x   ; deposita byte.
         inx          ; controlla se
         cpx #17      ; len(nomefile) > 16.
@@ -80,7 +80,7 @@ cont1:  stx len      ; salva len(nome).
         adc #3       ; legge ed invia
         tay          ; sul canale di
         ldx #0       ; comando (15)
-loop2:  lda comand,x ; "u0”, 159, ed
+loop2:  lda comand,x ; "u0", 159, ed
         jsr bsout    ; i caratteri
         inx          ; del nome del
 
