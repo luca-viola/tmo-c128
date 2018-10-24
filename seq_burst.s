@@ -61,7 +61,13 @@ loop1:  jsr $3c9     ; corrente.
 cont1:  stx len      ; salva len(nome).
         jsr bank15   ; passa 1n bank15.
 ;------------------------------------
-        lda #15
+        lda $d030   ; stores the current
+        sta isfast  ; fast mode
+        jsr $818c   ; check video mode
+        cmp #$05    ; is it 80 col?
+        bmi col40   ; if not skips
+        jsr $77b3   ; executes fast
+col40:  lda #15
         ldx #8
         tay
         jsr setfil   ; Open15.8,15.
@@ -134,7 +140,11 @@ cont2:  cmp #31      ; se status <> 31,
 uscita: cli          ; riabilita irq.
         lda #15      ; chiude canale
         jsr close    ; di comando.
-        jsr $380     ; aggiorna testo, e
+        lda isfast   ; was it fast?
+        cmp #$fd     ; 
+        beq basic    ; yes, exits. 
+        jsr $77c4    ; execute slow 
+basic:  jsr $380     ; aggiorna testo, e
         jmp $af90    ;  salta a execute.
 ;---------------------------------
 main:   lda $fc      ; raggiunto limite
@@ -152,8 +162,9 @@ vai:    jsr legblk   ; legge un settore
 legblk: ldx #254     ; bytes per blocco.
 entry2: ldy #0       ; offset scrittura.
 legge:  jsr legbyt   ; legge un byte.
-        sta $ff01    ; passa in bank 0.
-        sta ($fb),y  ; deposita byte.
+;        sta $ff01    ; passa in bank 0.
+;        sta ($fb),y  ; deposita byte.
+        jsr $ffd2    ;
         lda #0       ; commuta memoria
         sta $ff00    ; in banco 15.
         iny          ; continua a leg-
@@ -177,6 +188,7 @@ attesa: bit $dc0d    ; irq modifichi
         lda $dc0c    ; legge byte.
         rts          ; return.
 ;-------- buffer caratteri ---------
+isfast: .byte $00
 mesg:   .byte $44,$52,$49,$56,$45,$20,$4e,$4f,$4e,$20,$46,$41,$53,$54
         .byte $00
 comand: .byte $55,$30,$9f
