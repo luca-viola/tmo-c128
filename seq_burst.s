@@ -1,4 +1,3 @@
-.org $1300 ; start a 4864
 .segment "CODE"
 
 ;------ definitions -----------------
