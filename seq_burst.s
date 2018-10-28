@@ -4,7 +4,9 @@
         errvtt = $300 
         baspn  = $3d  
         errsys = $4d3f
-        fast   = $e5c3
+        fastser= $e5c3
+        fast   = $77b3
+        slow   = $77c4 
         open   = $ffc0
         setfil = $ffba
         setnam = $ffbd
@@ -13,6 +15,12 @@
         clrchn = $ffcc
         close  = $ffc3
         bank15 = $a845
+        chrget = $0380
+        chftch = $03c9
+        rgr    = $818c
+        newstt = $af90
+        getin  = $ffe4
+        scnkey = $ff9f
         len    = $fa
 ;------------------------------------
         lda #<rout   ; dirotta vettore
@@ -26,7 +34,7 @@ err:    jmp errsys   ; esce ad errore.
 ;------------------------------------
 rout:   cpx #11      ; syntax error?
         bne err      ; se no, errore.
-        cmp #147     ; token d1 load?
+        cmp #135     ; token d1 read?
         bne err      ; se no, errore.
         dec baspn    ; basic=basic-1.
 ;------------------------------------
@@ -35,18 +43,17 @@ rout:   cpx #11      ; syntax error?
         bne confr3   ; na, ed aggiorna
         dec baspn+1  ; puntatore alto.
 ;------------------------------------
-confr3: jsr $3c9     ; testo corrente
+confr3: jsr chftch   ; testo corrente
         cmp #$53     ; uguale ad "s”?
         bne err      ; se no, errore.
-        jsr $380     ; avanza d1 due
-        jsr $380     ; byte nel testo.
-
+        jsr chrget   ; avanza d1 due
+        jsr chrget   ; byte nel testo.
         cmp #34      ; virgolette?
         bne err      ; se no, errore.
 ;-------------------------------------
-        jsr $380     ; prossimo byte.
+        jsr chrget   ; prossimo byte.
         ldx #0       ; legge carattere
-loop1:  jsr $3c9     ; corrente.
+loop1:  jsr chftch   ; corrente.
         cmp #34      ; virgolette?
         beq cont1    ; se sì, salta.
         sta nome,x   ; deposita byte.
@@ -55,18 +62,18 @@ loop1:  jsr $3c9     ; corrente.
         bcs err23    ; se si’, errore.
         inc baspn    ; Incrementa pun—
         bne loop1    ; tatori al testo
-        inc baspn+1  ; e contlnua let-
+        inc baspn+1  ; e continua let-
         bne loop1    ; tura nomefile.
 ;------------------------------------
 cont1:  stx len      ; salva len(nome).
         jsr bank15   ; passa 1n bank15.
 ;------------------------------------
-        lda $d030   ; stores the current
-        sta isfast  ; fast mode
-        jsr $818c   ; check video mode
-        cmp #$05    ; is it 80 col?
-        bmi col40   ; if not skips
-        jsr $77b3   ; executes fast
+        lda $d030    ; stores the current
+        sta isfast   ; fast mode
+        jsr rgr      ; check video mode
+        cmp #$05     ; is it 80 col?
+        bmi col40    ; if not skips
+        jsr fast     ; executes fast
 col40:  lda #15
         ldx #8
         tay
@@ -88,7 +95,6 @@ col40:  lda #15
 loop2:  lda comand,x ; "u0", 159, ed
         jsr bsout    ; i caratteri
         inx          ; del nome del
-
         dey          ; file seq.
         bne loop2
 ;------------------------------
@@ -97,79 +103,78 @@ loop2:  lda comand,x ; "u0", 159, ed
         bvs burst    ; serial=1, salta.
 ;------------------------------
         ldx #0
-legge2: lda mesg,x
+reads2: lda mesg,x
         jsr bsout    ; legge caratteri
-        beq nofast   ; del messaggio
+        beq nobrst   ; del messaggio
         inx          ; fino allo zero.
-        bne legge2
+        bne reads2
 ;------------------------------
-nofast: lda #15      ; chiude canale
-        jsr close    ; di comando a
+nobrst: jsr cleanup  ; chiude canale comando
         ldx #255     ; ritorna al basic
         jmp errsys   ; senza errore (x)
 ;------------------------------
 burst:  sei          ; disabilita irq.
         lda #$80     ; inserisce in
         ldy #00      ; due puntatori
-        sty $fb      ; ind. di inizio
+        sty $fb      ; ind. di start
         sta $fc      ; del caricamento.
 ;------------------------------
         lda $dd00    ; azzera bit 4 del
         and #$ef     ; registro I/O
         sta $dd00    ; del cia 2.
-        jsr fast     ; modo fast input.
+        jsr fastser  ; modo fast input.
         lda $dc0d    ; azzera reg. irq.
 ;------------------------------
-inizio: jsr legbyt   ; legge stato.
+start: jsr rdbyte    ; legge stato.
         cmp #2       ; se <2 (tutto ok)
         bcc main     ; salta a routine.
         bne cont2    ; se <>2, salta.
 ;------------------------------
-        lda #15      ; se =2 (file not
-        jsr close    ; found), chiude
-        ldx #4       ; canale 15, e
-        cli          ; torna a1 basic
+        jsr cleanup  ; se =2 (file not found)
+        ldx #4       ; torna a1 basic
         jmp errsys   ; con errore 4.
 ;------------------------------
 cont2:  cmp #31      ; se status <> 31,
-        bne uscita   ; esce, altrimenti
-        jsr legbyt   ; legge altro dato
-
+        bne exit     ; esce, altrimenti
+        jsr rdbyte   ; legge altro dato
         tax          ; bytes ultimo set-
         jsr entry2   ; tore), e salta.
-uscita: cli          ; riabilita irq.
-        lda #15      ; chiude canale
-        jsr close    ; di comando.
+exit:   jsr cleanup  ; pulisce              
         lda isfast   ; was it fast?
         cmp #$fd     ; 
         beq basic    ; yes, exits. 
-        jsr $77c4    ; execute slow 
-basic:  jsr $380     ; aggiorna testo, e
-        jmp $af90    ;  salta a execute.
+        jsr slow     ; execute slow 
+basic:  jsr chrget   ; aggiorna testo, e
+        jmp newstt   ; salta a basic execute.
 ;---------------------------------
 main:   lda $fc      ; raggiunto limite
         cmp #$f0     ; della memoria?
         bcc vai      ; se no, goto 143.
-        lda #15      ; se si, chiude
-        jsr close    ; canale comandi.
-        ldx #16      ; ed esce con er-
-        cli          ; rore 16 (out of
-        jmp errsys   ; memory.
-vai:    jsr legblk   ; legge un settore
-        jmp inizio   ; e ricomxncia.
+        jsr cleanup  ; se si, pulisce 
+        ldx #16      ; ed esce con out
+        jmp errsys   ; of memory error.
+vai:    jsr rdblk    ; legge un settore
+        jmp start    ; e ricomincia.
 ;------ s u b r o u t i n e s -------
-
-legblk: ldx #254     ; bytes per blocco.
+cleanup:lda #15      ; chiude canale di 
+        jsr close    ; comando
+        cli          ; ripristina irq
+        rts          ; torna
+;------------------------------------
+rdblk:  ldx #254     ; bytes per blocco.
 entry2: ldy #0       ; offset scrittura.
-legge:  jsr legbyt   ; legge un byte.
-;        sta $ff01    ; passa in bank 0.
-;        sta ($fb),y  ; deposita byte.
-        jsr $ffd2    ;
-        lda #0       ; commuta memoria
-        sta $ff00    ; in banco 15.
-        iny          ; continua a leg-
+reads:  jsr rdbyte   ; legge un byte.
+;       sta $ff01    ; passa in bank 0.
+;       sta ($fb),y  ; deposita byte.
+        jsr bsout    ;
+        lda $dc01
+        cmp #$7f
+        beq exit 
+;       lda #0       ; commuta memoria
+;       sta $ff00    ; in banco 15.
+loop3:  iny          ; continua a leg-
         dex          ; gere gli altri
-        bne legge    ; byte dal blocco.
+        bne reads    ; byte dal blocco.
 ;-----------------------------------
         tya          ; aggiorna punta-
         clc          ; tori di pagina
@@ -179,12 +184,12 @@ legge:  jsr legbyt   ; legge un byte.
         inc $fc      ; ti dal blocco.
 return: rts          ; return.
 ;-----------------------------------
-legbyt: lda $dd00    ; inverte bit 4
+rdbyte: lda $dd00    ; inverte bit 4
         eor #16      ; registro i/o
         sta $dd00    ; del cia.
         lda #8       ; attende che un
-attesa: bit $dc0d    ; irq modifichi
-        beq attesa   ; bit 4 di cia irq.
+wating: bit $dc0d    ; irq modifichi
+        beq wating   ; bit 4 di cia irq.
         lda $dc0c    ; legge byte.
         rts          ; return.
 ;-------- buffer caratteri ---------
@@ -193,4 +198,3 @@ mesg:   .byte $44,$52,$49,$56,$45,$20,$4e,$4f,$4e,$20,$46,$41,$53,$54
         .byte $00
 comand: .byte $55,$30,$9f
 nome:   .byte $00
-.end
