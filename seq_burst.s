@@ -125,7 +125,7 @@ burst:  sei          ; disabilita irq.
         jsr fastser  ; modo fast input.
         lda $dc0d    ; azzera reg. irq.
 ;------------------------------
-start: jsr rdbyte    ; legge stato.
+start:  jsr rdbyte   ; legge stato.
         cmp #2       ; se <2 (tutto ok)
         bcc main     ; salta a routine.
         bne cont2    ; se <>2, salta.
@@ -167,15 +167,15 @@ reads:  jsr rdbyte   ; legge un byte.
 ;       sta $ff01    ; passa in bank 0.
 ;       sta ($fb),y  ; deposita byte.
         jsr bsout    ;
-        lda $dc01
-        cmp #$7f
-        beq exit 
 ;       lda #0       ; commuta memoria
 ;       sta $ff00    ; in banco 15.
 loop3:  iny          ; continua a leg-
         dex          ; gere gli altri
         bne reads    ; byte dal blocco.
 ;-----------------------------------
+        ldx $dc01
+        cpx #$7f
+        beq return 
         tya          ; aggiorna punta-
         clc          ; tori di pagina
         adc $fb      ; zero sommando
