@@ -1,0 +1,352 @@
+01300 lda #$00    ;Prepara i puntatori a $2000 in ram 1 per
+01302 sta $fa     ;trasferirvi il codice di go-64,e mette
+01304 lda #$20    ;
+01306 sta $fb     ;
+01308 lda #$fa    ;in $2b9 il puntatore $fa
+0130a sta $02b9   ;
+0130d ldy #$00    ;azzera offset
+0130f lda $132e,y ;preleva da ram 0 il codice di go-64
+01312 ldx #$01    ;selezione del bank 1
+01314 jsr $ff77   ;routine di store to another bank
+01317 iny         ;continua finche' trasferisce tutto il codice
+01318 cpy #$27    ;
+0131a bne $130f   ;
+0131c jsr $e224   ;resetta la stringa CBM di system-reset
+0131f lda #$01    ;
+01321 ldy #$20    ;
+01323 ldx #$00    ;
+01325 sta $02     ;in $02 numero banco
+01327 sty $03     ;in $03/$04 indirizzo di salto in forma hi-low
+01329 stx $04     ;
+0132b jmp $ff71   ;jmp to another bank
+0132e lda #$7e    ;esegue go-64:setta ram 1 + I/O 
+01330 sta $ff00   ;
+01333 lda #$c7    ;punta il vettore di system-reset all'ingresso
+01335 sta $fff8   ;della nostra routine locata a $ 13c7
+01338 lda #$13    ;
+0133a sta $fff9   ;
+0133d lda #$e3    ;resetta le porte di I/O dell'8502
+0133f sta $01     ;
+01341 lda #$2f    ;
+01343 sta $00     ;
+01345 lda #$48    ;abilita il VIC-II a leggere la grafica in ram 1
+01347 sta $d506   ;e pone la ram comune nell'alto della memoria
+0134a lda #$f7    ;abilita le ROM del C64
+0134c sta $d505   ;
+0134f jmp $fce2   ;e salta alla routine di reset del c/64
+01352 ldx #$00    ;subroutine 1:salva nelle locazioni $1800-$1bff
+01354 lda $d800,x ;i codici della memoria colore presenti in modo
+01357 sta $1800,x ;64 al momento del reset
+0135a lda $d900,x ;
+0135d sta $1900,x ;
+01360 lda $da00,x ;
+01363 sta $1a00,x ;
+01366 lda $db00,x ;
+01369 sta $1b00,x ;
+0136c inx         ;
+0136d bne $1354   ;
+0136f rts         ;e ritorna
+01370 lda $17f3   ;subroutine 2:setta i puntatori alla bit-map e alla
+01373 and #$03    ;memoria colore tenendo conto del banco video il cui
+01375 sta $fa     ;valore e' contenuto in $ 17f3
+01377 lda #$03    ;bank video=3-(peek(56576)and 3)
+01379 sec         ;pone il risultato della precedente operazione
+0137a sbc $fa     ;in $fa
+0137c sta $fa     ;
+0137e ldx #$00    ;e lo moltiplica per 16384 determinando cosi'
+01380 asl $fa     ;la locazione iniziale dell'attuale bank video
+01382 rol $fb     ;
+01384 inx         ;
+01385 cpx #$0e    ;
+01387 bne $1380   ;
+01389 lda $fa     ;trasferisce i puntatori alla locazione iniziale del bank
+0138b sta $fc     ;video nei puntatori alla bit-map
+0138d lda $fb     ;
+0138f sta $fd     ;
+01391 lda $17f0   ;prende il valore di $d018 per testarne il bit 3:
+01394 and #$08    ;
+01396 beq $13a6   ;se non e' settato,va oltre,
+01398 lda #$00    ;altrimenti la bit-map inizia 8192 bytes dopo la locazione
+0139a clc         ;iniziale dell' attuale bank video,
+0139b adc $fa     ;e addiziona 8192 al puntatore bit-map
+0139d sta $fc     ;
+0139f lda #$20    ;
+013a1 clc         ;
+013a2 adc $fb     ;
+013a4 sta $fd     ;
+013a6 lda $17f0   ;determina la locazione iniziale della memoria degli
+013a9 and #$f0    ;attributi colore 1 e 2 secondo la formula
+013ab sta $fe     ;lc=(peek(53272)and240)*64
+013ad ldx #$00    ;
+013af asl $fe     ;
+013b1 rol $ff     ;
+013b3 inx         ;
+013b4 cpx #$06    ;
+013b6 bne $13af   ;
+013b8 lda $fe     ;addiziona ai puntatori alla memoria colore la locazione
+013ba clc         ;iniziale del bank video
+013bb adc $fa     ;
+013bd sta $fe     ;
+013bf lda $ff     ;
+013c1 clc         ;
+013c2 adc $fb     ;
+013c4 sta $ff     ;
+013c6 rts         ;e ritorna
+013c7 lda $d018   ;routine eseguita al momento del reset:preleva i valori di
+013ca sta $17f0   ;$d018,$d020,$d021 e li salva in appositi
+013cd lda $d020   ;registri-ombra
+013d0 sta $17f1   ;
+013d3 lda $d021   ;
+013d6 sta $17f2   ;
+013d9 lda #$00    ;setta il bank video numero 3
+013db sta $17f3   ;
+013de jsr $1352   ;salva la memoria colore
+013e1 jsr $1370   ;calcola i puntatori bit-map e colori 1 e 2 relativi
+013e4 ldx #$00    ;al bank video 3 e salva i puntatori da $fa a $ff in
+013e6 lda $fa,x   ;locazioni di comodo per far si' che il loro valore non
+013e8 sta $17f5,x ;venga distrutto dalla routine di reset
+013eb inx         ;
+013ec cpx #$06    ;
+013ee bne $13e6   ;
+013f0 jmp $e224   ;resetta la stringa CBM e prosegue il reset
+013f3 lda #$ff    ;subroutine 4:fa apparire la pagina grafica
+013f5 sta $d8     ;presente al momento del reset.
+013f7 lda #$70    ;Esclude l'editor grafico a interrupt del c128
+013f9 sta $01     ;e seleziona la 2a memoria colore posta in $d800-$dbe7
+013fb ldx #$00    ;
+013fd lda $1800,x ;e vi trasferisce gli attributi del colore 3
+01400 sta $d800,x ;
+01403 lda $1900,x ;
+01406 sta $d900,x ;
+01409 lda $1a00,x ;
+0140c sta $da00,x ;
+0140f lda $1b00,x ;
+01412 sta $db00,x ;
+01415 inx         ;
+01416 bne $13fd   ;
+01418 lda #$a0    ;esegue graphic 3
+0141a sta $d8     ;
+0141c lda $17f0   ;prende il valore di $ d018 prima salvato e lo
+0141f sta $0a2d   ;pone nel registro-ombra dell' editor grafico del c-128
+01422 lda $17f1   ;imposta i colori di bordo e sfondo presenti al
+01425 sta $d020   ;momento del reset
+01428 lda $17f2   ;
+0142b sta $d021   ;
+0142e lda #$44    ;abilita il VIC II a leggere la grafica in ram 1
+01430 sta $d506   ;
+01433 rts         ;e ritorna
+01434 lda #$00    ;main routine : setta il colore nero per sfondo e bordo
+01436 sta $d020   ;
+01439 sta $d021   ;
+0143c lda #$05    ;mette il colore verde per le scritte
+0143e sta $f1     ;
+01440 lda #$93    ;pulisce lo schermo
+01442 jsr $ffd2   ;
+01445 ldy #$00    ;punta il cursore a (0;7)
+01447 ldx #$07    ;
+01449 clc         ;
+0144a jsr $fff0   ;routine plot del kernal
+0144d jsr $ff7d   ;stampa il messaggio che segue
+01450 .word "premi spazio per entrare in pagina"
+01472 .byt $20,$20,$20,$20,$0d,$0d
+01478 .word "grafica e per cambiare banco video"
+0149a .byt $0d,$0d,$0d
+0149d .word "<return> per confermare"
+014b4 .byt 00     ;finche' incontra un byte=0
+014b5 lda $d4     ;attende la pressione di spazio
+014b3 cmp #$3c    ;
+014b9 bne $14b5   ;
+014bb ldx #$00    ;prende i valori prima salvati dei puntatori
+014bd lda $17f5,x ;
+014c0 sta $fa,x   ;e li rimette in $fa
+014c2 inx         ;
+014c3 cpx #$06    ;
+014c5 bne $14bd   ;
+014c7 jsr $13f3   ;visualizza la pagina grafica
+014ca ldy #$00    ;
+014cc lda $d4     ;esamina il tasto premuto:
+014ce cmp #$01    ;e' return?
+014d0 beq $1509   ;si',va a routine di transfer & save
+014d2 cmp #$58    ;vi sono tasti premuti?
+014d4 beq $14f5   ;no,va oltre e azzera il flag di tasto premuto
+014d6 ldx $17fe   ;si':controlla il flag e,se e' gia' impostato,
+014d9 cpx #$ff    ;significa che un tasto e' stato premuto e non
+014db beq $14cc   ;ancora rilasciato,e quindi ricomincia daccapo
+014dd lda #$ff    ;se c'e' un tasto premuto e il flag e' azzerato,
+014df sta $17fe   ;imposta il flag,
+014e2 iny         ;incrementa il numero del bank video
+014e3 cpy #$04    ;riportandolo a zero quando e' >= a 4
+014e5 bmi $14e9   ;
+014e7 ldy #$00    ;
+014e9 sty $dd00   ;imposta il nuovo bank video e ne pone il valore
+014ec sty $17f3   ;nella locazione usata per calcolare i puntatori
+014ef jsr $1370   ;calcola i puntatori relativi all' attuale bank video
+014f2 jmp $14cc   ;e ricomincia il ciclo daccapo
+014f5 lda #$00    ;azzera flag di tasto premuto
+014f7 sta $17fe   ;
+014fa jmp $14cc   ;e ricomincia daccapo
+014fd brk         ;
+014fe brk         ;
+014ff brk         ;
+01500 brk         ;
+01501 brk         ;
+01502 brk         ;
+01503 brk         ;
+01504 brk         ;
+01505 brk         ;
+01506 brk         ;
+01507 brk         ;
+01508 brk         ;routine di transfer & save:
+01509 lda #$04    ;riabilita il vic II a leggere la grafica in ram 0
+0150b sta $d506   ;
+0150e lda #$00    ;setta i puntatori a $4000
+01510 sta $fa     ;
+01512 lda #$40    ;
+01514 sta $fb     ;
+01516 lda #$fa    ;prepara puntatore per routine di STASH
+01518 sta $02b9   ;
+0151b ldy #$00    ;azzera offset
+0151d ldx #$01    ;seleziona bank 1
+0151f lda #$fc    ;puntatore alla bit-map
+01521 jsr $ff74   ;prende un byte dalla bit-map
+01524 ldx #$00    ;seleziona ram 0
+01526 jsr $ff77   ;deposita il byte prelevato nella locazione puntata da
+01529 iny         ;$fa/$fb,
+0152a bne $151d   ;
+0152c inc $fb     ;ripete per 8192 bytes
+0152e inc $fd     ;
+01530 lda $fb     ;
+01532 cmp #$60    ;
+01534 bne $151b   ;
+01536 lda #$40    ;rispettando il formato koala,trasferisce la memoria de-
+01538 sta $fa     ;gli attributi colore 1 e 2 puntata da $fe/$ff
+0153a lda #$5f    ;dal bank 1 al bank 0 nelle locazioni $5f40/$6327
+0153c sta $fb     ;
+0153e lda #$fa    ;
+01540 sta $02b9   ;
+01543 ldy #$00    ;
+01545 ldx #$01    ;
+01547 lda #$fe    ;
+01549 jsr $ff74   ;
+0154c ldx #$00    ;
+0154e jsr $ff77   ;
+01551 iny         ;
+01552 bne $1545   ;
+01554 inc $fb     ;
+01556 inc $ff     ;
+01558 lda $fb     ;
+0155a cmp #$64    ;
+0155c bne $1543   ;
+0155e ldx #$00    ;sempre secondo il formato koala,trasferisce
+01560 lda $1800,x ;gli attributi del colore 3 nelle locazioni
+01563 sta $6328,x ;$6328-$670f
+01566 lda $1900,x ;
+01569 sta $6428,x ;
+0156c lda $1a00,x ;
+0156f sta $6528,x ;
+01572 lda $1b00,x ;
+01575 sta $6628,x ;
+01578 inx         ;
+01579 bne $1560   ;
+0157b lda $17f2   ;prende il colore di fondo e lo pone in coda
+0157e sta $6710   ;ai dati prima trasferiti
+01581 jsr $ff84   ;resetta l' I/O
+01584 jsr $c000   ;e l' editor di schermo
+01587 ldx #$00    ;trasferisce in zona di lavoro il nome del file
+01589 lda $167a,x ;costituito ancora da spazi
+0158c sta $17d0,x ;
+0158f inx         ;
+01590 cpx #$10    ;
+01592 bne $1589   ;
+01594 lda #$00    ;pone sfondo e bordo in nero
+01596 sta $d020   ;
+01599 sta $d021   ;
+0159c lda #$0c    ;colore grigio scuro per le frasi da stampare
+0159e sta $f1     ;
+015a0 ldy #$00    ;punta il cursore in posizione home
+015a2 ldx #$00    ;
+015a4 clc         ;
+015a5 jsr $fff0   ;routine PLOT del kernal
+015a8 jsr $ff7d   ;stampa il messaggio che segue
+015ab .word "koala id (a-z):"
+015ba .byt $00    ;fine del messaggio
+015bb jsr $ffe4   ;prende un carattere ASCII dalla tastiera,
+015be cmp #$0d    ;e se e' return ne prende un altro
+015c0 beq $15bb   ;
+015c2 cmp #$41    ;idem se il codice e' piu' piccolo di "a"
+015c4 bmi $15bb   ;
+015c6 cmp #$5b    ;o se e'
+015c8 bpl $15bb   ;
+015ca sta $17d5   ;mette l'identificatore koala nel nome
+015cd jsr $ffd2   ;del file e lo stampa su video
+015d0 ldx #$00    ;stampa tre carriage return
+015d2 lda #$0d    ;
+015d4 jsr $ffd2   ;
+015d7 inx         ;
+015d8 cpx #$03    ;
+015da bne $15d4   ;
+015dc jsr $ff7d   ;stampa il messaggio che segue
+015df .word "insert name (8 char max.):"
+015f9 .byt $00    ;fine messaggio
+015fa ldx #$1a    ;setta il bordo superiore sinistro di una finestra
+015fc lda #$03    ;alle coordinate (26;3)
+015fe clc         ;
+015ff jsr $c02d   ;
+01602 ldx #$21    ;e setta il bordo inferiore destro alle coordinate
+01604 lda #$03    ;(33;3)
+01606 sec         ;
+01607 jsr $c02d   ;
+0160a lda #$1b    ;esegue esc+"m" (disabilita lo scroll verticale)
+0160c jsr $ffd2   ;
+0160f lda #$4d    ;
+01611 jsr $ffd2   ;
+01614 lda #$13    ;attiva la finestra
+01616 jsr $ffd2   ;
+01619 ldy #$00    ;prende il nome del file
+0161b jsr $ffcf   ;
+0161e cmp #$0d    ;fino alla pressione del tasto return
+01620 beq $162a   ;
+01622 sta $17d7,y ;mette il nome del file in area di lavoro
+01625 iny         ;
+01626 cpy #$0a    ;per un massimo di 8 caratteri
+01628 bmi $161b   ;
+0162a lda #$13    ;resetta la finestra stampando 2 volte [home]
+0162c jsr $ffd2   ;
+0162f lda #$13    ;
+01631 jsr $ffd2   ;
+01634 lda #$1b    ;esegue esc+"l"
+01636 jsr $ffd2   ;
+01639 lda #$4c    ;
+0163b jsr $ffd2   ;
+0163e lda #$93    ;pulisce lo schermo
+01640 jsr $ffd2   ;
+01643 ldx #$00    ;stampa 10 carriages return
+01645 lda #$0d    ;
+01647 jsr $ffd2   ;
+0164a inx         ;
+0164b cpx #$0a    ;
+0164d bne $1645   ;
+0164f lda #$0f    ;lunghezza del nome : 15 caratteri
+01651 ldx #$d0    ;indirizzo file name : $17d0
+01653 ldy #$17    ;
+01655 jsr $ffbd   ;set up file name
+01658 lda #$00    ;banco in cui si trova il nome file=0
+0165a ldx #$00    ;banco da cui registrare il file=0
+0165c jsr $ff68   ;setbank
+0165f lda #$00    ;canale 0
+01661 ldx #$08    ;periferica 8
+01663 ldy #$00    ;canale secondario 0
+01665 jsr $ffba   ;set files
+01668 lda #$00    ;prepara i puntatoria $4000 per operazione di save
+0166a sta $fa     ;
+0166c lda #$40    ;
+0166e sta $fb     ;
+01670 lda #$fa    ;in a puntatore alla locazione iniziale del file da salvare
+01672 ldx #$11    ;locazione finale del file da salvare + 1 = 
+01674 ldy #$67    ;                                                             01676 jsr $ffd8   ;esegue SAVE
+01679 rts         ;ed esce
+0167a .byt $81    ;
+0167b .word "pic a"
+01681 .byte $20,$20,$20,$20,$20,$20,$20,$20,$20,$20
+
+
