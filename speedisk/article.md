@@ -29,21 +29,21 @@ Innanzitutto lubrificatevi i polpastrelli per digitare i circa 1200 Data che cos
 
 Passiamo ora ad una breve descrizione delle varie sezioni dei turbo (per il disassembiato si rimanda al fascicolo Speciale Drive, dal momento che i due programmi sono più o meno simili (le differenze più rilevanti risiedono, appunto, nella gestione della memoria, fondamentalmente diversa tra il C/64 e il C/128). I salti utilizzati, comunque, sono quelli standard dei Kernal Cbm, e che quindi potrete facilmente individuare. Le routine non comprese nella tabella di salto dei kernal sono:
 
-**$F50F** (stampa Searching For...) 
-**$F533** (stampa Loading)
-**$F685** (stampa File Not Found)
-**$FOD5** (routine di Bopen: effettua una Open veloce saltando alcuni controlli)
-**$F59E** (routine di Bclose: effettua una Close veloce
-**$Ff77** (carica il valore puntato dalla locazione di pagina zero posta in accumulatore + un offset posto in Y nel numero di banco posto nel registro X)
+**$F50F** (stampa Searching For...)  
+**$F533** (stampa Loading)  
+**$F685** (stampa File Not Found)  
+**$FOD5** (routine di Bopen: effettua una Open veloce saltando alcuni controlli)  
+**$F59E** (routine di Bclose: effettua una Close veloce  
+**$Ff77** (carica il valore puntato dalla locazione di pagina zero posta in accumulatore + un offset posto in Y nel numero di banco posto nel registro X)  
 
 Vediamo ora in dettaglio le sezioni del programma:
 
-**$1300-$13ff**: questo programma va trasferito alla memoria dei drive
-**$1400-$14Bd**: procedura di apertura del file $14c0-$1551: lettura e storaggio dati
-**$1552-$1700**: chiusura del file o errore 
-**$1700- ....**: da qui in poi è presente il codice di inizializzazione che modifica il vettore di load, stampa il messaggio iniziale, modifica il vettore di Restore, pone in $3e4 la routine di storaggio veloce, ecc.
+**$1300-$13ff**: questo programma va trasferito alla memoria dei drive  
+**$1400-$14Bd**: procedura di apertura del file $14c0-$1551: lettura e storaggio dati  
+**$1552-$1700**: chiusura del file o errore  
+**$1700- ....**: da qui in poi è presente il codice di inizializzazione che modifica il vettore di load, stampa il messaggio iniziale, modifica il vettore di Restore, pone in $3e4 la routine di storaggio veloce, ecc.  
 
-In ogni caso, se conoscete il L.M., non dovreste aver problemi a comprendere, almeno nelle sue linee essenziali, il programma. L'importante è che la schiavitù dei caricamenti lunghi e' finita!!
+In ogni caso, se conoscete il L.M., non dovreste aver problemi a comprendere, almeno nelle sue linee essenziali, il programma. L'importante è che la schiavitù dei caricamenti lunghi e' finita!!  
 
 ## INTERLEAVE E DINTORNI
 
